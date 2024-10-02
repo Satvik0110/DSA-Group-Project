@@ -3,11 +3,9 @@
 #include <vector>
 #include <conio.h>      // For _getch() and _kbhit()
 #include <windows.h>    // For SetConsoleCursorPosition()
-#include <chrono>
 using namespace std;
-using namespace chrono;
 
-const int MAX_UNDO_SIZE = 10; // Set a limit for the undo stack size
+const int MAX_UNDO_SIZE = 100; // Set a limit for the undo stack size
 
 class TextEditor {
 private:
@@ -18,7 +16,7 @@ private:
     int cursorX = 0, cursorY = 0; // Tracks the cursor's x and y position (for console display)
 
     vector<vector<stack<char>>> undoStack; // Undo stack to store previous states
-    time_point<steady_clock> lastChangeTime; // Time of the last change
+   
 
     // Helper function to set cursor position in the console
     void setCursorPosition(int x, int y) {
@@ -84,7 +82,6 @@ public:
         // Initially start with one empty line
         lines.push_back(stack<char>());
         undoStack.push_back(lines); // Initialize undo stack with the initial state
-        lastChangeTime = steady_clock::now();
     }
 
     // Insert a character at the current cursor position
@@ -100,7 +97,6 @@ public:
             }
         }
 
-        lastChangeTime = steady_clock::now(); // Record time of the last change
     }
 
     // Move the cursor to the left
@@ -253,7 +249,10 @@ public:
                     backspace();
                 } else if (ch == 26) { // Ctrl + Z for undo
                     undo();
-                } else {
+                }  else if (ch == 27) { // esc key
+                    return;
+                } 
+                else {
                     insert(ch); // Insert the character
                 }
 
