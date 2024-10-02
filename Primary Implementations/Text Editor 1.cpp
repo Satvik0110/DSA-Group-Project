@@ -2,18 +2,22 @@
 #include <stack>
 #include <vector>
 #include <conio.h>      // For _getch() and _kbhit()
-#include <windows.h>    // For SetConsoleCursorPosition() Basically helps with the real time thing.
+#include <windows.h>    // For SetConsoleCursorPosition(), GetAsyncKeyState()
+#include <chrono>       // For time tracking
 using namespace std;
+using namespace chrono;
 
 class TextEditor {
 private:
-    stack<char> leftStack;   // Stores the text to the left of the cursor
-    stack<char> rightStack;  // Stores the text to the right of the cursor
-    vector<stack<char>> lines;  // Each line is a separate stack
-    int currentLine = 0;        // Track which line the cursor is on
-    int cursorX = 0, cursorY = 0; // Tracks the cursor's x and y position (for console display)
+    stack<char> leftStack;
+    stack<char> rightStack;
+    vector<stack<char>> lines;
+    int currentLine = 0;
+    int cursorX = 0, cursorY = 0;
 
-    // Helper function to set cursor position in the console
+    vector<stack<char>> lastState; // Last state saved for undo
+    time_point<steady_clock> lastChangeTime; // Time of the last change
+
     void setCursorPosition(int x, int y) {
         COORD coord;
         coord.X = x;
@@ -21,26 +25,19 @@ private:
         SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
     }
 
-    // Helper function to display the current text
     void displayText() {
-        system("cls"); // Clear screen to refresh the view
-
+        system("cls");
         for (int i = 0; i <= currentLine; i++) {
-            stack<char> temp = lines[i];  // Copy line stack to reverse and display
+            stack<char> temp = lines[i];
             stack<char> reversedLeft;
-
             while (!temp.empty()) {
                 reversedLeft.push(temp.top());
                 temp.pop();
             }
-
-            // Display content of the current line
             while (!reversedLeft.empty()) {
                 cout << reversedLeft.top();
                 reversedLeft.pop();
             }
-
-            // Insert cursor in the current line
             if (i == currentLine) {
                 cout << "_";
                 temp = rightStack;
@@ -54,135 +51,105 @@ private:
     }
 
 public:
-
     TextEditor() {
-        // Initially start with one empty line
         lines.push_back(stack<char>());
+        lastState = lines; // Initialize lastState
+        lastChangeTime = steady_clock::now();
     }
 
-    // Insert a character at the current cursor position
     void insert(char ch) {
         leftStack.push(ch);
+        lines[currentLine] = leftStack;
+        lastChangeTime = steady_clock::now(); // Record time of the last change
     }
 
-    // Move the cursor to the left
     void moveCursorLeft() {
         if (!leftStack.empty()) {
             rightStack.push(leftStack.top());
             leftStack.pop();
+            lines[currentLine] = leftStack;
         }
     }
 
-    // Move the cursor to the right
     void moveCursorRight() {
         if (!rightStack.empty()) {
             leftStack.push(rightStack.top());
             rightStack.pop();
+            lines[currentLine] = leftStack;
         }
     }
 
-    // Move the cursor up
-    void moveCursorUp() {
-        if (currentLine > 0) {
-            lines[currentLine] = leftStack;    // Store current line state
-            currentLine--;                     // Move to the previous line
-            leftStack = lines[currentLine];    // Load the previous line's leftStack
-            rightStack = stack<char>();        // Clear the rightStack (cursor at end of previous line)
-            cursorY = max(cursorY - 1, 0);     // Update cursor Y position
-        }
-    }
-
-    // Move the cursor down
-    void moveCursorDown() {
-        if (currentLine < lines.size() - 1) {
-            lines[currentLine] = leftStack;    // Store current line state
-            currentLine++;                     // Move to the next line
-            leftStack = lines[currentLine];    // Load the next line's leftStack
-            rightStack = stack<char>();        // Clear the rightStack
-            cursorY++;                         // Update cursor Y position
-        }
-    }
-
-    // Backspace (delete character before the cursor)
     void backspace() {
         if (!leftStack.empty()) {
             leftStack.pop();
+            lines[currentLine] = leftStack;
         }
     }
 
-    // Delete (delete character after the cursor)
-    void deleteChar() {
-        if (!rightStack.empty()) {
-            rightStack.pop();
-        }
-    }
-
-     // Insert a newline (Enter key)
     void insertNewLine() {
-        lines[currentLine] = leftStack;   // Store current line's state
-        currentLine++;                    // Move to the next line
+        lines[currentLine] = leftStack;
+        currentLine++;
         if (currentLine >= lines.size()) {
-            lines.push_back(stack<char>()); // Create a new line if necessary
+            lines.push_back(stack<char>());
         }
-        leftStack = stack<char>();        // Clear left stack for the new line
-        rightStack = stack<char>();       // Clear right stack
-        cursorX = 0;                      // Reset cursor position
-        cursorY++;                        // Move cursor to the next line
+        leftStack = stack<char>();
+        rightStack = stack<char>();
+        cursorX = 0;
+        cursorY++;
     }
 
+    void undo() {
+        lines = lastState;
+        if (currentLine >= lines.size()) currentLine = lines.size() - 1;
+        leftStack = lines[currentLine];
+        rightStack = stack<char>();  // Clear the rightStack after undo
+        cout << "Undo performed!" << endl;
+    }
 
-    // Main function to handle real-time editing
     void runEditor() {
-        int cursorX = 0, cursorY = 0;  // Track cursor position
-
         system("cls");
         displayText();
         setCursorPosition(cursorX, cursorY);
 
         while (true) {
-            if (_kbhit()) {  // Checks if the keyboard gave a signal
+            if (_kbhit()) {
                 int ch = _getch();
 
-                if (ch == 224) {  // Special keys (arrows, delete)
-                    ch = _getch();  // Get the actual code
-
+                if (ch == 224) {  // Arrow keys
+                    ch = _getch();
                     switch (ch) {
-                        case 75: // Left arrow key
-                            moveCursorLeft();
-                            cursorX = max(cursorX - 1, 0);
-                            break;
-                        case 77: // Right arrow key
-                            moveCursorRight();
-                            cursorX++;
-                            break;
-                        case 83: // Delete key (ASCII code 83)
-                            deleteChar();
-                            break;
-                        case 72:  // Up arrow key
-                            moveCursorUp();
-                            cursorY = max(cursorY - 1, 0);
-                            break;
-                        case 80:  // Down arrow key
-                            moveCursorDown();
-                            cursorY++;
-                            break; 
-                                               
+                        case 75: moveCursorLeft(); cursorX = max(cursorX - 1, 0); break;  // Left
+                        case 77: moveCursorRight(); cursorX++; break;                    // Right
                     }
-                } else if (ch == 8) { // Backspace key
+                } else if (ch == 8) {  // Backspace
                     backspace();
                     cursorX = max(cursorX - 1, 0);
-                } else if (ch == 13) {  // Enter key (ASCII 13)
+                } else if (ch == 13) {  // Enter
                     insertNewLine();
-                } else if (ch == 27) {  // ESC key to quit
+                } else if (ch == 27) {  // ESC to quit
                     return;
                 } else if (ch >= 32 && ch <= 126) {  // Printable characters
                     insert(ch);
                     cursorX++;
                 }
 
-                // Update the console display
+                // Update time and save state before processing further keys
+                auto now = steady_clock::now();
+                auto elapsed = duration_cast<seconds>(now - lastChangeTime).count();
+                if (elapsed >= 2) {
+                    lastState = lines;  // Save the last state if 2 seconds have passed
+                    lastChangeTime = now;  // Reset the lastChangeTime
+                }
+
+                // Check for Ctrl+Z for undo
+                if (GetAsyncKeyState(VK_CONTROL) & 0x8000) {
+                    if (GetAsyncKeyState('Z') & 0x8000) {
+                        undo();
+                    }
+                }
+
                 displayText();
-                setCursorPosition(cursorX, cursorY);  // Update cursor position
+                setCursorPosition(cursorX, cursorY);
             }
         }
     }
@@ -190,9 +157,7 @@ public:
 
 int main() {
     TextEditor editor;
-
-    cout << "Hi! (Press ESC to quit)\n";
-    editor.runEditor();  // Run the editor
-
+    cout << "Welcome to the Text Editor! (Press ESC to quit)\n";
+    editor.runEditor();
     return 0;
 }
