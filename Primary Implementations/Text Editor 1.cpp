@@ -16,7 +16,7 @@ private:
     int cursorX = 0, cursorY = 0; // Tracks the cursor's x and y position (for console display)
 
     vector<vector<stack<char>>> undoStack; // Undo stack to store previous states
-   
+    vector<vector<stack<char>>> redoStack; // Redo stack for redo functionality
 
     // Helper function to set cursor position in the console
     void setCursorPosition(int x, int y) {
@@ -88,6 +88,7 @@ public:
     void insert(char ch) {
         leftStack.push(ch);
         lines[currentLine] = leftStack;
+        redoStack.clear(); // Clear the redo stack when a new character is inserted
 
         if (isStateChanged()) {
             undoStack.push_back(lines); // Push only if the state has changed
@@ -96,7 +97,6 @@ public:
                 undoStack.erase(undoStack.begin()); // Remove the oldest state if limit exceeded
             }
         }
-
     }
 
     // Move the cursor to the left
@@ -135,14 +135,14 @@ public:
             lines[currentLine] = leftStack;    // Store current line state
             currentLine++;                     // Move to the next line
             leftStack = lines[currentLine];    // Load the next line's leftStack
-            rightStack = stack<char>();        // Clear the rightStack
+            rightStack = stack<char>();        // Clear rightStack
             cursorY++;                         // Update cursor Y position
             cursorX = leftStack.size();        // Move the cursor to the end of the next line
         }
     }
 
     // Backspace (delete character before the cursor)
-    void backspace() {
+        void backspace() {
         if (!leftStack.empty()) {
             leftStack.pop();
             lines[currentLine] = leftStack;
@@ -174,12 +174,15 @@ public:
     void deleteChar() {
         if (!rightStack.empty()) {
             rightStack.pop();
+            redoStack.clear(); // Clear the redo stack when delete is used
         }
     }
 
     // Insert a newline (Enter key)
     void insertNewLine() {
         lines[currentLine] = leftStack;   // Store current line's state
+        redoStack.clear(); // Clear the redo stack when a new line is inserted
+
         if (isStateChanged()) {
             undoStack.push_back(lines); // Push only if the state has changed
             // Limit the undo stack size
@@ -200,11 +203,23 @@ public:
 
     void undo() {
         if (undoStack.size() > 1) { // Check if there's an undo state available
-            undoStack.pop_back(); // Remove the current state
-            lines = undoStack.back(); // Restore the previous state
+            redoStack.push_back(lines);  // Store current state in redo before undoing
+            undoStack.pop_back();        // Remove the current state
+            lines = undoStack.back();    // Restore the previous state
             if (currentLine >= lines.size()) currentLine = lines.size() - 1;
             leftStack = lines[currentLine];
             rightStack = stack<char>();  // Clear the rightStack after undo
+        }
+    }
+
+    void redo() {
+        if (!redoStack.empty()) {
+            undoStack.push_back(lines);   // Save current state to undo stack
+            lines = redoStack.back();     // Restore the redo state
+            redoStack.pop_back();         // Remove the redo state
+            if (currentLine >= lines.size()) currentLine = lines.size() - 1;
+            leftStack = lines[currentLine];
+            rightStack = stack<char>();  // Clear rightStack after redo
         }
     }
 
@@ -231,43 +246,46 @@ public:
                             cursorX++;
                             if(rightStack.empty()) leftStack.push(' ');
                             break;
+                        case 72: // Up arrow key
+                            moveCursorUp();
+                            break;
+                        case 80: // Down arrow key
+                            moveCursorDown();
+                            break;
                         case 83: // Delete key (ASCII code 83)
                             deleteChar();
                             break;
-                        case 72:  // Up arrow key
-                            moveCursorUp();
-                            cursorY = max(cursorY - 1, 0);
-                            break;
-                        case 80:  // Down arrow key
-                            moveCursorDown();
-                            cursorY++;
-                            break;
                     }
-                } else if (ch == '\r') { // Enter key
-                    insertNewLine();
-                } else if (ch == '\b') { // Backspace key
+                }
+                else if (ch == 8) {  // Backspace
                     backspace();
-                } else if (ch == 26) { // Ctrl + Z for undo
+                }
+                else if (ch == 13) {  // Enter key
+                    insertNewLine();
+                }
+                else if (ch == 26) {  // Ctrl + Z (Undo)
                     undo();
-                }  else if (ch == 27) { // esc key
-                    return;
-                } 
-                else {
-                    insert(ch); // Insert the character
+                }
+                else if (ch == 25) {  // Ctrl + Y (Redo)
+                    redo();
+                }
+                else if (ch == 27) {  // ESC key to exit
+                    break;
+                }
+                else {  // Regular character input
+                    insert(ch);
+                    cursorX++;
                 }
 
-                displayText(); // Refresh display
-                setCursorPosition(cursorX, cursorY); // Update cursor position
+                displayText();
+                setCursorPosition(cursorX, cursorY);
             }
-
-         
-            
         }
     }
 };
 
 int main() {
     TextEditor editor;
-    editor.runEditor(); // Start the text editor
+    editor.runEditor();
     return 0;
 }
