@@ -3,6 +3,7 @@
 #include <vector>
 #include <conio.h>      // For _getch() and _kbhit()
 #include <windows.h>    // For SetConsoleCursorPosition()
+#include<fstream>
 using namespace std;
 
 const int MAX_UNDO_SIZE = 100; // Set a limit for the undo stack size
@@ -223,6 +224,29 @@ public:
         }
     }
 
+    void save(){
+        ofstream file("myDoc.txt");
+        for (const auto& lineStack : lines) {
+        // We need to output characters in the order they were added, so reverse the stack
+        std::stack<char> tempStack = lineStack;  // Make a copy of the current stack
+        std::stack<char> reverseStack;
+
+        // Reverse the stack to maintain original order of characters
+        while (!tempStack.empty()) {
+            reverseStack.push(tempStack.top());
+            tempStack.pop();
+        }
+
+        // Write characters from the reversed stack into the file
+        while (!reverseStack.empty()) {
+            file << reverseStack.top();
+            reverseStack.pop();
+        }
+        file << '\n';
+    }
+    file.close();
+    }
+
     // Main function to handle real-time editing
     void runEditor() {
         system("cls");
@@ -268,6 +292,9 @@ public:
                 }
                 else if (ch == 25) {  // Ctrl + Y (Redo)
                     redo();
+                }
+                 else if (ch == 19) {  // Ctrl + S (Save)
+                    save();
                 }
                 else if (ch == 27) {  // ESC key to exit
                     break;
