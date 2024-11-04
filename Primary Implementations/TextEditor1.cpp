@@ -5,9 +5,13 @@
 #include <windows.h>    // For SetConsoleCursorPosition()
 #include <fstream>
 #include <cctype>       // For isspace() and toupper()
+#include <unordered_map>
+#include <algorithm>
 using namespace std;
 
 const int MAX_UNDO_SIZE = 100; // Set a limit for the undo stack size
+const int DEFAULT_COLOR = 7; // Default console color
+const int SUGGESTION_COLOR = 10; // Green color for suggestions
 
 class TextEditor {
 private:
@@ -20,6 +24,120 @@ private:
     vector<vector<stack<char>>> undoStack; // Undo stack to store previous states
     vector<vector<stack<char>>> redoStack; // Redo stack for redo functionality
 
+   
+
+    unordered_map<string,string> autocompleteWords = {
+    {"add", "address"},
+    {"adm", "administration"},
+    {"agr", "agree"},
+    {"ans", "answer"},
+    {"app", "application"},
+    {"arg", "argue"},
+    {"assi", "assignment"},
+    {"aut", "automatic"},
+    {"beg", "beginning"},
+    {"bel", "believe"},
+    {"ben", "benefit"},
+    {"bet", "between"},
+    {"bro", "brother"},
+    {"bu", "business"},
+    {"cal", "calendar"},
+    {"cap", "capacity"},
+    {"cha", "character"},
+    {"cho", "choice"},
+    {"cla", "class"},
+    {"cli", "client"},
+    {"com", "communication"},
+    {"con", "contract"},
+    {"cor", "correction"},
+    {"cou", "country"},
+    {"cre", "credit"},
+    {"dec", "decision"},
+    {"del", "delivery"},
+    {"dep", "department"},
+    {"dev", "development"},
+    {"dir", "direction"},
+    {"dis", "discussion"},
+    {"doc", "document"},
+    {"dra", "draft"},
+    {"edu", "education"},
+    {"eff", "effect"},
+    {"emp", "employee"},
+    {"enc", "encourage"},
+    {"equ", "equipment"},
+    {"est", "establish"},
+    {"eve", "event"},
+    {"exp", "experience"},
+    {"fin", "financial"},
+    {"fol", "following"},
+    {"for", "formation"},
+    {"fun", "function"},
+    {"gen", "general"},
+    {"gro", "group"},
+    {"gui", "guidance"},
+    {"hea", "health"},
+    {"his", "history"},
+    {"ide", "idea"},
+    {"imp", "important"},
+    {"ind", "individual"},
+    {"inf", "information"},
+    {"int", "interest"},
+    {"inv", "investment"},
+    {"jud", "judgment"},
+    {"jus", "justice"},
+    {"lan", "language"},
+    {"leg", "legal"},
+    {"lev", "level"},
+    {"lib", "library"},
+    {"loc", "location"},
+    {"man", "management"},
+    {"mat", "material"},
+    {"mea", "measure"},
+    {"mem", "member"},
+    {"met", "method"},
+    {"mil", "military"},
+    {"nat", "national"},
+    {"nee", "necessary"},
+    {"net", "network"},
+    {"not", "notice"},
+    {"obj", "object"},
+    {"off", "office"},
+    {"ope", "operation"},
+    {"org", "organization"},
+    {"par", "parent"},
+    {"pat", "pattern"},
+    {"per", "performance"},
+    {"pla", "platform"},
+    {"pol", "policy"},
+    {"pos", "position"},
+    {"pre", "presentation"},
+    {"pro", "program"},
+    {"pub", "public"},
+    {"qui", "quickly"},
+    {"rea", "reason"},
+    {"rec", "recommend"},
+    {"rel", "relationship"},
+    {"rep", "report"},
+    {"res", "resource"},
+    {"res", "response"},
+    {"rev", "review"},
+    {"sec", "section"},
+    {"ser", "service"},
+    {"sig", "significant"},
+    {"sim", "similar"},
+    {"soc", "social"},
+    {"sta", "standard"},
+    {"str", "structure"},
+    {"sys", "system"},
+    {"the", "theory"},
+    {"typ", "typical"},
+    {"uni", "university"},
+    {"val", "value"},
+    {"vie", "view"},
+    {"wor", "worker"}
+};
+
+
     // Helper function to set cursor position in the console
     void setCursorPosition(int x, int y) {
         COORD coord;
@@ -29,31 +147,48 @@ private:
     }
 
     // Helper function to display the current text
-    void displayText() {
-        system("cls");
-        for (int i = 0; i <= currentLine; i++) {
-            stack<char> temp = lines[i];
-            stack<char> reversedLeft;
+void displayText() {
+    system("cls");
+    for (int i = 0; i <= currentLine; i++) {
+        stack<char> temp = lines[i];
+        stack<char> reversedLeft;
+        while (!temp.empty()) {
+            reversedLeft.push(temp.top());
+            temp.pop();
+        }
+        while (!reversedLeft.empty()) {
+            cout << reversedLeft.top();
+            reversedLeft.pop();
+        }
+
+        // Check for autocomplete suggestion
+        if (i == currentLine) {
+            // Check if there's a suggestion
+            string str = "";
+            stack<char> tempStack = leftStack;
+            while (!tempStack.empty() && tempStack.top() != ' ') {
+                str += tempStack.top();
+                tempStack.pop();
+            }
+            reverse(str.begin(), str.end());
+            if (autocompleteWords.find(str) != autocompleteWords.end()) {
+                // Display the suggestion in a different color
+                SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), SUGGESTION_COLOR);
+                cout << " *"; // Asterisk indicating an autocomplete suggestion
+                cout << " " << autocompleteWords[str]; // Show the suggestion
+                SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), DEFAULT_COLOR); // Reset color
+            }
+
+            cout << "_"; // Cursor position
+            temp = rightStack;
             while (!temp.empty()) {
-                reversedLeft.push(temp.top());
+                cout << temp.top();
                 temp.pop();
             }
-            while (!reversedLeft.empty()) {
-                cout << reversedLeft.top();
-                reversedLeft.pop();
-            }
-            if (i == currentLine) {
-                cout << "_";
-                temp = rightStack;
-                while (!temp.empty()) {
-                    cout << temp.top();
-                    temp.pop();
-                }
-            }
-            cout << endl;
         }
+        cout << endl;
     }
-
+}
     // Function to check if the state has changed
     bool isStateChanged() {
         if (undoStack.empty()) return true; // If the undo stack is empty, consider it a change
@@ -279,67 +414,103 @@ public:
     }
 
     // Main function to handle real-time editing
-    void runEditor() {
-        system("cls");
-        displayText();
-        setCursorPosition(cursorX, cursorY);
+    // Main function to handle real-time editing
+void runEditor() {
+    system("cls");
+    displayText();
+    setCursorPosition(cursorX, cursorY);
 
-        while (true) {
-            if (_kbhit()) {  // Checks if the keyboard gave a signal
-                int ch = _getch();
+    while (true) {
+        if (_kbhit()) {  // Checks if the keyboard gave a signal
+            int ch = _getch();
 
-                if (ch == 224) {  // Special keys (arrows, delete)
-                    ch = _getch();  // Get the actual code
+            if (ch == 224) {  // Special keys (arrows, delete)
+                ch = _getch();  // Get the actual code
 
-                    switch (ch) {
-                        case 75: // Left arrow key
-                            moveCursorLeft();
-                            cursorX = max(cursorX - 1, 0);
-                            break;
-                        case 77: // Right arrow key
-                            moveCursorRight();
-                            cursorX++;
-                            if(rightStack.empty()) leftStack.push(' ');
-                            break;
-                        case 72: // Up arrow key
-                            moveCursorUp();
-                            break;
-                        case 80: // Down arrow key
-                            moveCursorDown();
-                            break;
-                        case 83: // Delete key (ASCII code 83)
-                            deleteChar();
-                            break;
-                    }
+                switch (ch) {
+                    case 75: // Left arrow key
+                        moveCursorLeft();
+                        cursorX = max(cursorX - 1, 0);
+                        break;
+                    case 77: // Right arrow key
+                        moveCursorRight();
+                        cursorX++;
+                        if(rightStack.empty()) leftStack.push(' ');
+                        break;
+                    case 72: // Up arrow key
+                        moveCursorUp();
+                        break;
+                    case 80: // Down arrow key
+                        moveCursorDown();
+                        break;
+                    case 83: // Delete key (ASCII code 83)
+                        deleteChar();
+                        break;
                 }
-                else if (ch == 8) {  // Backspace
-                    backspace();
-                }
-                else if (ch == 13) {  // Enter key
-                    insertCapitalNewLine();
-                }
-                else if (ch == 26) {  // Ctrl + Z (Undo)
-                    undo();
-                }
-                else if (ch == 25) {  // Ctrl + Y (Redo)
-                    redo();
-                }
-                else if (ch == 19) {  // Ctrl + S (Save)
-                    save();
-                }
-                else if (ch == 27) {  // ESC key to exit
-                    break;
-                }
-                else {  // Regular character input
-                    insert_capital(ch);
-                    cursorX++;
-                }
-
-                displayText();
-                setCursorPosition(cursorX, cursorY);
             }
+            else if (ch == 8) {  // Backspace
+                backspace();
+            }
+            else if (ch == 13) {  // Enter key
+                insertCapitalNewLine();
+            }
+            else if (ch == 26) {  // Ctrl + Z (Undo)
+                undo();
+            }
+            else if (ch == 25) {  // Ctrl + Y (Redo)
+                redo();
+            }
+            else if (ch == 19) {  // Ctrl + S (Save)
+                save();
+            }
+            else if (ch == 27) {  // ESC key to exit
+                break;
+            }
+            else if(ch == 9) { // TAB key for autocomplete
+                string str = "";
+                stack<char> temp = leftStack;
+
+                // Collect characters until the last space (or the beginning of the line)
+                while (!temp.empty() && temp.top() != ' ') {
+                    str += temp.top(); // Append each character to str
+                    temp.pop();
+                }
+
+                // Reverse the extracted string to get the actual word
+                reverse(str.begin(), str.end());
+
+                // Check if the word exists in the hashmap
+                if (autocompleteWords.find(str) != autocompleteWords.end()) {
+                    string suggestion = autocompleteWords[str];
+
+                    // Remove the extracted word from leftStack
+                    for (int i = 0; i < str.size(); ++i) {
+                        leftStack.pop();
+                    }
+
+                    // Insert the suggestion into leftStack
+                    for (char c : suggestion) {
+                        leftStack.push(c);
+                    }
+                    // Update cursor position
+                    cursorX = leftStack.size()-1; // Move cursor to the end of the newly inserted suggestion
+                    rightStack = stack<char>(); 
+
+                    lines[currentLine] = leftStack;
+                    displayText();
+                    setCursorPosition(cursorX, cursorY);
+                }
+            }
+            else {  // Regular character input
+                insert_capital(ch);
+                cursorX++;
+            }
+
+            displayText();
+            setCursorPosition(cursorX, cursorY);
         }
     }
+}
 };
 
 int main() {
@@ -347,3 +518,4 @@ int main() {
     editor.runEditor();
     return 0;
 }
+
