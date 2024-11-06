@@ -467,40 +467,46 @@ void runEditor() {
                 break;
             }
             else if(ch == 9) { // TAB key for autocomplete
-                string str = "";
-                stack<char> temp = leftStack;
+    string str = "";
+    stack<char> temp = leftStack;
 
-                // Collect characters until the last space (or the beginning of the line)
-                while (!temp.empty() && temp.top() != ' ') {
-                    str += temp.top(); // Append each character to str
-                    temp.pop();
-                }
+    // Collect characters until the last space (or the beginning of the line)
+    while (!temp.empty() && temp.top() != ' ') {
+        str += temp.top(); // Append each character to str
+        temp.pop();
+    }
 
-                // Reverse the extracted string to get the actual word
-                reverse(str.begin(), str.end());
+    // Reverse the extracted string to get the actual word
+    reverse(str.begin(), str.end());
 
-                // Check if the word exists in the hashmap
-                if (autocompleteWords.find(str) != autocompleteWords.end()) {
-                    string suggestion = autocompleteWords[str];
+    // Check if the word exists in the hashmap
+    if (autocompleteWords.find(str) != autocompleteWords.end()) {
+        string suggestion = autocompleteWords[str];
 
-                    // Remove the extracted word from leftStack
-                    for (int i = 0; i < str.size(); ++i) {
-                        leftStack.pop();
-                    }
+        // Preserve the current right stack
+        stack<char> tempRightStack = rightStack;
 
-                    // Insert the suggestion into leftStack
-                    for (char c : suggestion) {
-                        leftStack.push(c);
-                    }
-                    // Update cursor position
-                    cursorX = leftStack.size()-1; // Move cursor to the end of the newly inserted suggestion
-                    rightStack = stack<char>(); 
+        // Remove the extracted word from leftStack
+        for (int i = 0; i < str.size(); ++i) {
+            leftStack.pop();
+        }
 
-                    lines[currentLine] = leftStack;
-                    displayText();
-                    setCursorPosition(cursorX, cursorY);
-                }
-            }
+        // Insert the suggestion into leftStack
+        for (char c : suggestion) {
+            leftStack.push(c);
+        }
+
+        // Update cursor position
+        cursorX = leftStack.size(); // Move cursor to the end of the newly inserted suggestion
+
+        // Restore the right stack
+        rightStack = tempRightStack;
+
+        lines[currentLine] = leftStack; // Update the current line
+        displayText();
+        setCursorPosition(cursorX, cursorY);
+    }
+}
             else {  // Regular character input
                 insert_capital(ch);
                 cursorX++;
