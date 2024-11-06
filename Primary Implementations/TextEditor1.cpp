@@ -246,11 +246,11 @@ public:
             tempStack.pop();
 
             // Check if the last character is a newline or a full stop
-            if (lastChar == '\n' || lastChar == '.') {
+            if (lastChar == '\n' || lastChar == '.'||lastChar=='?'||lastChar=='!') {
                 caps = true; // Capitalize the next character
             } else if (lastChar == ' ') {
                 // Check the second last character (if it exists)
-                if (!tempStack.empty() && tempStack.top() == '.') {
+                if (!tempStack.empty() && tempStack.top() == '.'||!tempStack.empty() && tempStack.top() == '!'||!tempStack.empty() && tempStack.top() == '?') {
                     caps = true; // Capitalize after a space following a period
                 }
             }
