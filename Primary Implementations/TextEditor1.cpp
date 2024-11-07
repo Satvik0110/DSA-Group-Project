@@ -32,9 +32,7 @@ private:
 
     vector<vector<stack<char>>> undoStack; // Undo stack to store previous states
     vector<vector<stack<char>>> redoStack; // Redo stack for redo functionality
-
-   
-
+    string filename;
     unordered_map<string,string> autocompleteWords = {
     {"add", "address"},
     {"adm", "administration"},
@@ -155,7 +153,7 @@ private:
         SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
     }
 
-    // Helper function to display the current text
+    
 // Helper function to display the current text
 void displayText() {
     system("cls"); // Clear the console
@@ -244,7 +242,7 @@ void displayText() {
 
 
 public:void updateTextFile() {
-    ofstream file("myDoc.txt");
+    ofstream file(filename); // Use the member variable for the filename
     for (const auto& lineStack : lines) {
         // We need to output characters in the order they were added, so reverse the stack
         std::stack<char> tempStack = lineStack;  // Make a copy of the current stack
@@ -272,13 +270,27 @@ public:void updateTextFile() {
     file.close();
 }
     TextEditor() {
-        // Initially start with one empty line
-        lines.push_back(stack<char>());
-        undoStack.push_back(lines); // Initialize undo stack with the initial state
-        
-        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), *Colour_Itr);  //Set initial colour attribute to default
-        updateTextFile();
+    // Initially start with one empty line
+    lines.push_back(stack<char>());
+    undoStack.push_back(lines); // Initialize undo stack with the initial state
+
+    // Determine the filename
+    filename = "myDoc.txt"; // Initialize with the default filename
+    int fileIndex = 1;
+
+    // Check for existing files and increment the index
+    while (ifstream(filename)) {
+        filename = "myDoc" + to_string(fileIndex) + ".txt";
+        fileIndex++;
     }
+
+    // Create the file and write initial content
+    ofstream file(filename);
+    file.close(); // Close the file after creating it
+
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), *Colour_Itr);  // Set initial colour attribute to default
+    updateTextFile(); // Update the text file with initial content
+}
 
     // Insert a character at the current cursor position with auto-capitalization
     void insert_capital(char ch) {
@@ -449,24 +461,35 @@ void moveCursorUp() {
 
 
      long long int word_count() {
-        if (lines[0].empty()) return 0;      // If there is no data yet, there are 0 words
-        long long int count = 0;        // Set initial count to 0
-        string all_lines = "";        // Create a string to store all the data so far
-        for (int i = lines.size() - 1; i >= 0; i--) {      // Traverse through lines to get all data in one string
-            stack<char> flag = lines[i];
-            char curr;
-            if (!flag.empty()) curr = flag.top();
-            while (!flag.empty()) {
-                all_lines += curr;
-                curr = flag.top();
-                flag.pop();
-            }
+    long long int count = 0; // Set initial count to 0
+    string all_lines = ""; // Create a string to store all the data so far
+
+    // Traverse through lines to get all data in one string
+    for (const auto& lineStack : lines) {
+        stack<char> tempStack = lineStack;
+        stack<char> reversedStack;
+
+        // Reverse the stack to maintain original order of characters
+        while (!tempStack.empty()) {
+            reversedStack.push(tempStack.top());
+            tempStack.pop();
         }
-        istringstream stream(all_lines);    // Define a stream from all_lines
-        string word;
-        while (stream >> word) count++;        // Take a word as input from the stream and keep count
-        return count;
+
+        // Write characters from the reversed stack into the all_lines string
+        while (!reversedStack.empty()) {
+            all_lines += reversedStack.top();
+            reversedStack.pop();
+        }
+        all_lines += '\n'; // Add a newline character after each line
     }
+
+    // Use istringstream to count words
+    istringstream stream(all_lines);
+    string word;
+    while (stream >> word) count++; // Count words
+
+    return count;
+}
 
 
     void setTextColor(int color)
