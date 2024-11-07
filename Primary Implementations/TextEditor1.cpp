@@ -15,9 +15,8 @@ const int DEFAULT_COLOR = 7; // Default console color
 const int SUGGESTION_COLOR = 10; // Green color for suggestions
 
 long long int Word_Count = 0;   //Set initial word count as 0
-const vector<int> Colours = {7,9,10,12,13,14};  //Default : 7
+const vector<int> Colours = {7,9,12,13,14};  //Default : 7(white)
                                                 //Blue : 9
-                                                //Green : 10
                                                 //Red : 12
                                                 //Magenta : 13
                                                 //Yellow : 14                                                                                               
@@ -546,9 +545,11 @@ void runEditor() {
                 Colour_Itr++;   //Move to next colour in the palette
                 if(Colour_Itr==Colours.end()) Colour_Itr = Colours.begin();
                 setTextColor(*Colour_Itr);      //Set colour to next colour
+                displayText();
+                setCursorPosition(cursorX, cursorY);
                 continue;
             }
-            else if(ch == 9) { // TAB key for autocomplete
+            else if (ch == 9) { // TAB key for autocomplete
     string str = "";
     stack<char> temp = leftStack;
 
@@ -585,12 +586,15 @@ void runEditor() {
         rightStack = tempRightStack;
 
         lines[currentLine] = leftStack; // Update the current line
+        
+        // Set text color to the current color before displaying text
+        setTextColor(*Colour_Itr);
+        
         displayText();
         display_word_count();
         setCursorPosition(cursorX, cursorY);
     }
-}
-            else {  // Regular character input
+}            else {  // Regular character input
                 insert_capital(ch);
                 cursorX++;
             }
