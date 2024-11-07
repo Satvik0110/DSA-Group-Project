@@ -1,5 +1,3 @@
-// C++ program to implement
-// the above approach
 #include <iostream>
 #include <vector>
 #include <string>
