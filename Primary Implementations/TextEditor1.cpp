@@ -156,18 +156,23 @@ private:
     }
 
     // Helper function to display the current text
+// Helper function to display the current text
 void displayText() {
-    system("cls");
-    for (int i = 0; i <= currentLine; i++) {
+    system("cls"); // Clear the console
+    for (int i = 0; i < lines.size(); i++) {
         stack<char> temp = lines[i];
-        stack<char> reversedLeft;
+        stack<char> reversedStack;
+
+        // Reverse the stack to maintain original order of characters
         while (!temp.empty()) {
-            reversedLeft.push(temp.top());
+            reversedStack.push(temp.top());
             temp.pop();
         }
-        while (!reversedLeft.empty()) {
-            cout << reversedLeft.top();
-            reversedLeft.pop();
+
+        // Print the line
+        while (!reversedStack.empty()) {
+            cout << reversedStack.top();
+            reversedStack.pop();
         }
 
         // Check for autocomplete suggestion
@@ -195,8 +200,11 @@ void displayText() {
                 temp.pop();
             }
         }
-        cout << endl;
+        cout << endl; // Move to the next line
     }
+
+    // Set the cursor position at the end of the current line
+    setCursorPosition(cursorX, cursorY);
 }
     // Function to check if the state has changed
     bool isStateChanged() {
@@ -234,23 +242,42 @@ void displayText() {
         return false;
     }
 
-public:
+
+public:void updateTextFile() {
+    ofstream file("myDoc.txt");
+    for (const auto& lineStack : lines) {
+        // We need to output characters in the order they were added, so reverse the stack
+        std::stack<char> tempStack = lineStack;  // Make a copy of the current stack
+        std::stack<char> reverseStack;
+
+        // Reverse the stack to maintain original order of characters
+        while (!tempStack.empty()) {
+            reverseStack.push(tempStack.top());
+            tempStack.pop();
+        }
+
+        // Write characters from the reversed stack into the file
+        while (!reverseStack.empty()) {
+            file << reverseStack.top();
+            reverseStack.pop();
+        }
+        file << '\n';
+    }
+    // Add line gaps between the text and word count
+    for (int i = 0; i < 4; ++i) {
+        file << '\n';
+    }
+    // Write the live word count at the end of the file
+    file << "Current Word Count: " << word_count() << endl;
+    file.close();
+}
     TextEditor() {
         // Initially start with one empty line
         lines.push_back(stack<char>());
         undoStack.push_back(lines); // Initialize undo stack with the initial state
         
         SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), *Colour_Itr);  //Set initial colour attribute to default
-        
-        FILE *fp;
-        fp = fopen("word_count.txt","w");   
-        if(!fp) 
-        {
-            cout<<"File did not open"<<endl;
-            exit(1);
-        }
-        fprintf(fp,"Current Word Count: %lld",Word_Count);  //Initialize the word count 0 right when TextEditor object is created.
-        fclose(fp);    
+        updateTextFile();
     }
 
     // Insert a character at the current cursor position with auto-capitalization
@@ -291,6 +318,7 @@ public:
             undoStack.push_back(lines); // Push only if the state has changed
           
         }
+        updateTextFile();
 }
 
 
@@ -314,16 +342,18 @@ public:
     }
 
     // Move the cursor up
-    void moveCursorUp() {
-        if (currentLine > 0) {
-            lines[currentLine] = leftStack;    // Store current line state
-            currentLine--;                     // Move to the previous line
-            leftStack = lines[currentLine];    // Load the previous line's leftStack
-            rightStack = stack<char>();        // Clear the rightStack (cursor at end of previous line)
-            cursorY = max(cursorY - 1, 0);     // Update cursor Y position
-            cursorX = leftStack.size();        // Move the cursor to the end of the previous line
-        }
+void moveCursorUp() {
+    if (currentLine > 0) {
+        // Store the current line state before moving up
+        lines[currentLine] = leftStack;    
+        currentLine--;                     // Move to the previous line
+        leftStack = lines[currentLine];    // Load the previous line's leftStack
+        rightStack = stack<char>();        // Clear the rightStack (cursor at end of previous line)
+        cursorX = leftStack.size();        // Move the cursor to the end of the previous line
     }
+    displayText(); // Refresh the display after moving the cursor
+    setCursorPosition(cursorX, cursorY); // Update cursor position
+}
 
     // Move the cursor down
     void moveCursorDown() {
@@ -364,6 +394,7 @@ public:
             currentLine--;                            // Move to the previous line
             leftStack = lines[currentLine];           // Load the left stack of the previous line
         }
+        updateTextFile();
     }
 
     // Delete (delete character after the cursor)
@@ -372,6 +403,7 @@ public:
             rightStack.pop();
             redoStack.clear(); // Clear the redo stack when delete is used
         }
+        updateTextFile();
     }
 
     // Insert a newline, capitalize that charecter
@@ -386,6 +418,8 @@ public:
     rightStack = stack<char>();       // Clear right stack
     cursorX = 0;                      // Reset cursor position
     cursorY++;                        // Move cursor to the next line
+
+    updateTextFile();
 }
 
 
@@ -398,6 +432,7 @@ public:
             leftStack = lines[currentLine];
             rightStack = stack<char>();  // Clear the rightStack after undo
         }
+        updateTextFile();
     }
 
     void redo() {
@@ -409,67 +444,30 @@ public:
             leftStack = lines[currentLine];
             rightStack = stack<char>();  // Clear rightStack after redo
         }
+        updateTextFile();
     }
 
-    void save(){
-        ofstream file("myDoc.txt");
-        for (const auto& lineStack : lines) {
-            // We need to output characters in the order they were added, so reverse the stack
-            std::stack<char> tempStack = lineStack;  // Make a copy of the current stack
-            std::stack<char> reverseStack;
 
-            // Reverse the stack to maintain original order of characters
-            while (!tempStack.empty()) {
-                reverseStack.push(tempStack.top());
-                tempStack.pop();
-            }
-
-            // Write characters from the reversed stack into the file
-            while (!reverseStack.empty()) {
-                file << reverseStack.top();
-                reverseStack.pop();
-            }
-            file << '\n';
-        }
-        file.close();
-    }
-
-    long long int word_count()
-    {
-        if(lines[0].empty()) return 0;      //If there is no data yet, there are 0 words
-        long long int count = 0;        //Set initial count to 0
-        string all_lines="";        //Create a string to store all the data so far
-        for(int i=lines.size()-1;i>=0;i--)      //Traverse through lines to get all data in one string
-        {
-            stack<char> flag = lines[i];            
+     long long int word_count() {
+        if (lines[0].empty()) return 0;      // If there is no data yet, there are 0 words
+        long long int count = 0;        // Set initial count to 0
+        string all_lines = "";        // Create a string to store all the data so far
+        for (int i = lines.size() - 1; i >= 0; i--) {      // Traverse through lines to get all data in one string
+            stack<char> flag = lines[i];
             char curr;
-            if(!flag.empty()) curr = flag.top();
-            while(!flag.empty())
-            {
-                all_lines+=curr;
+            if (!flag.empty()) curr = flag.top();
+            while (!flag.empty()) {
+                all_lines += curr;
                 curr = flag.top();
                 flag.pop();
             }
-        }    
-        istringstream stream(all_lines);    //Define a stream from all_lines
+        }
+        istringstream stream(all_lines);    // Define a stream from all_lines
         string word;
-        while(stream>>word) count++;        //Take a word as input from the stream and keep count
-        return count;                       
+        while (stream >> word) count++;        // Take a word as input from the stream and keep count
+        return count;
     }
 
-    void display_word_count()
-    {
-        Word_Count = word_count();  
-        FILE* fp;
-        fp = fopen("word_count.txt","w");   
-        if(!fp) 
-        {
-            cout<<"File did not open"<<endl;
-            exit(1);
-        }
-        fprintf(fp,"Current Word Count: %lld",Word_Count);  //Store the live word count
-        fclose(fp);
-    }
 
     void setTextColor(int color)
     {
@@ -523,21 +521,11 @@ void runEditor() {
             else if (ch == 25) {  // Ctrl + Y (Redo)
                 redo();
             }
-            else if (ch == 19) {  // Ctrl + S (Save)
-                save();
-            }
+            // else if (ch == 19) {  // Ctrl + S (Save)
+            //     save();
+            // }
             else if (ch == 27) {  // ESC key to exit
                 SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), Colours[0]);   //Revert to original colour
-                
-                FILE *fp;
-                fp = fopen("word_count.txt","w");   
-                if(!fp) 
-                {
-                    cout<<"File did not open"<<endl;
-                    exit(1);
-                }
-                fprintf(fp,"Current Word Count: %d",0);  //Clear the word count to zero again.
-                fclose(fp);    
                 break;
             }
             else if (ch==18)    //Ctrl + R (Change Colour)
@@ -591,7 +579,7 @@ void runEditor() {
         setTextColor(*Colour_Itr);
         
         displayText();
-        display_word_count();
+        updateTextFile();
         setCursorPosition(cursorX, cursorY);
     }
 }            else {  // Regular character input
@@ -600,7 +588,7 @@ void runEditor() {
             }
 
             displayText();
-            display_word_count();
+            updateTextFile();
             setCursorPosition(cursorX, cursorY);
         }
     }
