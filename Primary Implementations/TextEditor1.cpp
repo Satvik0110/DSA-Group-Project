@@ -93,6 +93,7 @@ private:
     {"jud", "judgment"},
     {"jus", "justice"},
     {"lan", "language"},
+    {"lap","laptop"},
     {"leg", "legal"},
     {"lev", "level"},
     {"lib", "library"},
@@ -142,6 +143,7 @@ private:
     {"val", "value"},
     {"vie", "view"},
     {"wor", "worker"}
+    
 };
 
 
