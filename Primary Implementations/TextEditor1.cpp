@@ -7,11 +7,21 @@
 #include <cctype>       // For isspace() and toupper()
 #include <unordered_map>
 #include <algorithm>
+#include<sstream>
 using namespace std;
 
 const int MAX_UNDO_SIZE = 100; // Set a limit for the undo stack size
 const int DEFAULT_COLOR = 7; // Default console color
 const int SUGGESTION_COLOR = 10; // Green color for suggestions
+
+long long int Word_Count = 0;   //Set initial word count as 0
+const vector<int> Colours = {7,9,10,12,13,14};  //Default : 7
+                                                //Blue : 9
+                                                //Green : 10
+                                                //Red : 12
+                                                //Magenta : 13
+                                                //Yellow : 14                                                                                               
+auto Colour_Itr = Colours.begin();    //To iterate through colours
 
 class TextEditor {
 private:
@@ -230,6 +240,18 @@ public:
         // Initially start with one empty line
         lines.push_back(stack<char>());
         undoStack.push_back(lines); // Initialize undo stack with the initial state
+        
+        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), *Colour_Itr);  //Set initial colour attribute to default
+        
+        FILE *fp;
+        fp = fopen("word_count.txt","w");   
+        if(!fp) 
+        {
+            cout<<"File did not open"<<endl;
+            exit(1);
+        }
+        fprintf(fp,"Current Word Count: %lld",Word_Count);  //Initialize the word count 0 right when TextEditor object is created.
+        fclose(fp);    
     }
 
     // Insert a character at the current cursor position with auto-capitalization
@@ -413,6 +435,48 @@ public:
         file.close();
     }
 
+    long long int word_count()
+    {
+        if(lines[0].empty()) return 0;      //If there is no data yet, there are 0 words
+        long long int count = 0;        //Set initial count to 0
+        string all_lines="";        //Create a string to store all the data so far
+        for(int i=lines.size()-1;i>=0;i--)      //Traverse through lines to get all data in one string
+        {
+            stack<char> flag = lines[i];            
+            char curr;
+            if(!flag.empty()) curr = flag.top();
+            while(!flag.empty())
+            {
+                all_lines+=curr;
+                curr = flag.top();
+                flag.pop();
+            }
+        }    
+        istringstream stream(all_lines);    //Define a stream from all_lines
+        string word;
+        while(stream>>word) count++;        //Take a word as input from the stream and keep count
+        return count;                       
+    }
+
+    void display_word_count()
+    {
+        Word_Count = word_count();  
+        FILE* fp;
+        fp = fopen("word_count.txt","w");   
+        if(!fp) 
+        {
+            cout<<"File did not open"<<endl;
+            exit(1);
+        }
+        fprintf(fp,"Current Word Count: %lld",Word_Count);  //Store the live word count
+        fclose(fp);
+    }
+
+    void setTextColor(int color)
+    {
+       SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);  //Set text colour to given colour
+    }
+
     // Main function to handle real-time editing
     // Main function to handle real-time editing
 void runEditor() {
@@ -464,7 +528,25 @@ void runEditor() {
                 save();
             }
             else if (ch == 27) {  // ESC key to exit
+                SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), Colours[0]);   //Revert to original colour
+                
+                FILE *fp;
+                fp = fopen("word_count.txt","w");   
+                if(!fp) 
+                {
+                    cout<<"File did not open"<<endl;
+                    exit(1);
+                }
+                fprintf(fp,"Current Word Count: %d",0);  //Clear the word count to zero again.
+                fclose(fp);    
                 break;
+            }
+            else if (ch==18)    //Ctrl + R (Change Colour)
+            {
+                Colour_Itr++;   //Move to next colour in the palette
+                if(Colour_Itr==Colours.end()) Colour_Itr = Colours.begin();
+                setTextColor(*Colour_Itr);      //Set colour to next colour
+                continue;
             }
             else if(ch == 9) { // TAB key for autocomplete
     string str = "";
@@ -504,6 +586,7 @@ void runEditor() {
 
         lines[currentLine] = leftStack; // Update the current line
         displayText();
+        display_word_count();
         setCursorPosition(cursorX, cursorY);
     }
 }
@@ -513,6 +596,7 @@ void runEditor() {
             }
 
             displayText();
+            display_word_count();
             setCursorPosition(cursorX, cursorY);
         }
     }
