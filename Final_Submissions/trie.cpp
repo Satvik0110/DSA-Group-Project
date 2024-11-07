@@ -26,7 +26,13 @@ public:
     void insert(const string& word) {
         TrieNode* node = root;
         for (char ch : word) {
+            if (!islower(ch)) continue;  // Skip non-lowercase characters
+        
             int index = ch - 'a';
+        
+            if (index < 0 || index >= 26) {  // Ensure index is within bounds
+                continue;
+            }
             if (node->children[index] == nullptr) {
                 node->children[index] = new TrieNode();
             }
