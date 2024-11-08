@@ -39,7 +39,7 @@ This is a custom text editor developed in C++ with terminal support, designed to
 
 ### 8. **Auto-Capitalization**
    - **Functionality**: Automatically capitalizes the first letter of each new sentence as well as after a punctuation mark.
-   - **Core Functions**: `shouldCapitalize()`, `insert_Capital()`, `insertCapitalNewLine()`
+   - **Core Functions**: `shouldCapitalize()`, `insert_Capital()`, `insertCapitalNewLine()`, `insert_capital_i()`
    - **Description**: Detects when the user starts a new sentence and capitalizes the first letter, improving typing speed and accuracy.
 
 ### 9. **Color Change**
