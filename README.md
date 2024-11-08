@@ -47,7 +47,7 @@ This is a custom text editor developed in C++ with terminal support, designed to
    - **Core Functions**: `setTextColour()`
    - **Description**: Pn pressing `Ctrl+R`, changes color of text on the terminal from a fixed set of colors for beautification.
    
-### 9. **Spell Check**
+### 10. **Spell Check**
    
 
 ## Setting up the application
