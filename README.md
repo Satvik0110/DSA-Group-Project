@@ -14,7 +14,7 @@ This is a custom text editor developed in C++ with terminal support, designed to
    - **Core Functions**: `moveCursorLeft()`,`moveCursorRight()`,`moveCursorUp()`, `moveCursorDown()`,`setCursorPosition()`
    - **Description**: Allows easy navigation through the document using the arrow keys. The cursor can move horizontally or vertically in the text.
 
-### 3. **Backspace and Delete**
+### 3. **Backspace/Delete**
    - **Functionality**: Move the cursor using arrow keys (left, right, up, down).
    - **Core Functions**: `backspace()`,`deleteChar()`
    - **Description**: Allows user to use the backspace and delete keys to rectify mistakes.
@@ -60,3 +60,16 @@ This is a custom text editor developed in C++ with terminal support, designed to
 Clone the repository:
 ```bash
 git clone https://github.com/yourusername/your-repo-name.git
+```
+
+## Contributions
+
+- [Sarah Fatima](https://github.com/sarahfatima1205) — Implemented **Undo**, **Redo**, and **Auto Capitalization** features.
+
+- [Satvik Garg](https://github.com/Satvik0110) — Developed **Real-time Display**, **File Handling**, and **Autocomplete** functionality.
+
+- [Sohom Sarkar](https://github.com/Sohom-Sarkar) — Added **Cursor Movement**, **Backspace & Delete**, and **Spellchecker** features.
+
+- [Soham Kulkarni](https://github.com/soham-k-11) — Integrated **Color Change** and **Live Word Count** functionality.
+
+
