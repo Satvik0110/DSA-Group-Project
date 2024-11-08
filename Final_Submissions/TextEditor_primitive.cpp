@@ -294,46 +294,70 @@ public:void updateTextFile() {
     updateTextFile(); // Update the text file with initial content
 }
 
+void insert_capital_i(stack<char>& stack) {
+    vector<char> temp; //a temporary vector of three charecters to observe " i "/" i.?!"
+    
+    // Retrieve the last three characters from the stack
+    if(stack.size()>=3){
+        for(int i=0;i<3;i++){
+            temp.push_back(stack.top());
+            stack.pop();
+        }
+        // Check if we have " i " pattern
+        if (temp[2] == ' ' && temp[1] == 'i' && (temp[0] == ' ' || temp[0] == '.' || temp[0] == '?' || temp[0] == '!')) {
+            temp[1] = 'I';  // Capitalize 'i'
+        }
+
+        // Push the characters back to the stack in reverse order
+        for (int i = 2; i >= 0; i--) {
+            stack.push(temp[i]);
+        }
+    } else {
+        // Push characters back if we didn’t find the pattern or stack size is less than 3
+        for (auto it = temp.rbegin(); it != temp.rend(); ++it) {
+            stack.push(*it);
+        }
+    }
+}
+
+
     // Insert a character at the current cursor position with auto-capitalization
     void insert_capital(char ch) {
-        //Capitalize if it's the first character being inserted or follows a newline or period, only works "." and ". " or multiple ".... "
-        bool caps = false; //caps stores the state, whether to capitalize or not
-        // Check if the left stack is empty which implies that it is the first charecter
+        // Capitalize if it's the first character being inserted or follows punctuation
+        bool caps = false; 
         if (leftStack.empty()) {
-            caps = true;  //initialize state to be capitalised
+            caps = true;  // Capitalize the first character, matlab its the first charecter.
         } else {
-            // Create a temporary stack to check the last characters as we cannot access the elements before the top.
+            // Create a temporary stack to check the previous characters
             stack<char> tempStack = leftStack;
             char lastChar = tempStack.top();
             tempStack.pop();
 
-            // Check if the last character is a newline or a full stop
-            if (lastChar == '\n' || lastChar == '.'||lastChar=='?'||lastChar=='!') {
-                caps = true; // Capitalize the next character
-            } else if (lastChar == ' ') {
-                // Check the second last character (if it exists)
-                if (!tempStack.empty() && tempStack.top() == '.'||!tempStack.empty() && tempStack.top() == '!'||!tempStack.empty() && tempStack.top() == '?') {
-                    caps = true; // Capitalize after a space following a period
+            // Check if the last character is punctuation that should trigger capitalization
+            if (lastChar == '\n' || lastChar == '.' || lastChar == '?' || lastChar == '!') {
+                caps = true;
+            } else if (lastChar == ' ' && !tempStack.empty()) {
+                // Check if a period, question mark, or exclamation mark precedes a space
+                char secondLastChar = tempStack.top();
+                if (secondLastChar == '.' || secondLastChar == '?' || secondLastChar == '!') {
+                    caps = true;
                 }
             }
         }
+        leftStack.push(caps ? toupper(ch) : ch);
+        insert_capital_i(leftStack);
 
-        // Insert the character (capitalize if needed)
-        if (caps) {
-            leftStack.push(toupper(ch));  // Capitalize the current character
-        } else {
-            leftStack.push(ch);  // Keep the character as is
-        }
-
+        // Update the states
         lines[currentLine] = leftStack;
         redoStack.clear(); // Clear the redo stack when a new character is inserted
 
         if (isStateChanged()) {
-            undoStack.push_back(lines); // Push only if the state has changed
-          
+            undoStack.push_back(lines); // Push to the undo stack if the state has changed
         }
+
         updateTextFile();
 }
+
 
 
 
