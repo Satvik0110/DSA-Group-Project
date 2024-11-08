@@ -546,9 +546,7 @@ void runEditor() {
             else if (ch == 25) {  // Ctrl + Y (Redo)
                 redo();
             }
-            // else if (ch == 19) {  // Ctrl + S (Save)
-            //     save();
-            // }
+            
             else if (ch == 27) {  // ESC key to exit
                 SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), Colours[0]);   //Revert to original colour
                 break;
